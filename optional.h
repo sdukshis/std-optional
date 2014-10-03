@@ -112,19 +112,19 @@ class optional {
         return *this;
     }
 
-    const T * operator->() const {
+    const T * operator->() const noexcept {
         return reinterpret_cast<const T*>(storage_);
     }
 
-    T * operator->() {
+    T * operator->() noexcept {
         return reinterpret_cast<T*>(storage_);
     }
 
-    const T & operator*() const {
-        return *reinterpret_cast<T*>(storage_);
+    const T & operator*() const noexcept {
+        return *reinterpret_cast<const T*>(storage_);
     }
 
-    T & operator*() {
+    T & operator*() noexcept {
         return *reinterpret_cast<T*>(storage_);
     }
 
@@ -184,7 +184,7 @@ class optional {
     }
 
  private:
-    char storage_[sizeof(T)];
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type storage_[1];
     bool empty_;
 };
 
@@ -200,12 +200,33 @@ bool operator==(const optional<T> &lhs, const optional<T> &rhs) {
 }
 
 template<class T>
+bool operator<(const optional<T> &lhs, const optional<T> &rhs) {
+    if (!bool(rhs)) {
+        return false;
+    }
+    if (!bool(lhs)) {
+        return true;
+    }
+    return std::less<T>{}(*rhs, *lhs);
+}
+
+template<class T>
 bool operator==(const optional<T> &opt, nullopt_t) noexcept {
     return !bool(opt);
 }
 
 template<class T>
 bool operator==(nullopt_t, const optional<T> &opt) noexcept {
+    return !bool(opt);
+}
+
+template<class T>
+bool operator<(const optional<T> &opt, nullopt_t) noexcept {
+    return !bool(opt);
+}
+
+template<class T>
+bool operator<(nullopt_t, const optional<T> &opt) noexcept {
     return !bool(opt);
 }
 
@@ -217,6 +238,16 @@ bool operator==(const optional<T> &opt, const T &value) {
 template<class T>
 bool operator==(const T &value, const optional<T> &opt) {
     return bool(opt) ? *opt == value : false;
+}
+
+template<class T>
+bool operator<(const optional<T> &opt, const T &value) {
+    return bool(opt) ? std::less<T>{}(*opt, value) : true;
+}
+
+template<class T>
+bool operator<(const T &value, const optional<T> &opt) {
+    return bool(opt) ? std::less<T>{}(*opt, value) : false;
 }
 
 }  // namespace pt
